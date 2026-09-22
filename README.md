@@ -134,7 +134,7 @@ codex-winfix/
 
 ## 十、注意实现
 
-- 默认模式是只读诊断；`-Apply` 才会备份配置、构建 shim 和设置用户级环境变量。
+- 默认模式是只读诊断；`-Apply` 才会备份配置、修复根级模型/provider/catalog/sandbox/agent 字段、构建 shim 和设置用户级环境变量。
 - 只使用用户级环境变量，不修改系统级变量。
 - 不输出或保存 API Key、Token、Cookie、密码、完整私人日志或第三方 API 地址。
 - 不要求修改注册表，不建议关闭 `SafeDllSearchMode`。

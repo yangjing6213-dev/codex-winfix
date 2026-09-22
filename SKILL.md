@@ -49,9 +49,10 @@ Only apply changes after reviewing the diagnosis:
 powershell -ExecutionPolicy Bypass -File .\scripts\Repair-CodexWinFix.ps1 -Apply -ProjectPath "$HOME\Downloads\demo"
 ```
 
-The script is intentionally conservative. It creates a backup, refuses to
-overwrite an existing shim source unless `-Force` is explicit, and never stores
-secret values in output or repository files.
+The script is intentionally conservative. It creates a backup, updates only the
+root model/provider/catalog/sandbox/agent settings, refuses to overwrite an
+existing shim source unless `-Force` is explicit, and never stores secret values
+in output or repository files.
 
 ## Stop conditions
 

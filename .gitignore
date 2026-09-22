@@ -1,0 +1,18 @@
+# Local Codex configuration and backup files
+.env*
+*.log
+*.backup*
+.codex/
+config.toml
+models_cache.json
+
+# Local build output and Windows binaries
+*.exe
+target/
+bin/
+
+# Editor and OS noise
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

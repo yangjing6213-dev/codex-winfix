@@ -1,62 +1,101 @@
 ---
 name: codex-winfix
-description: Use when Windows Codex reports that terminal, file editing, or subagent tools are unavailable, especially with `code-mode host exited during handshake`, CWD forwarding, malformed model configuration, or app-server reload symptoms.
+description: Use when Windows Codex or Codex Desktop reports unavailable terminal, file editing, or subagent tools, especially with code-mode host handshake failures, GPT-5.6+ model-only failures, CWD-dependent startup, mixed Codex installations, encrypted WindowsApps plugin-cache copies, or thread-not-found errors after an app-server reload.
 ---
 
 # Codex WinFix
 
-Use this skill to recover the Windows Codex tool chain without weakening the
-sandbox or exposing credentials. It targets the failure family where Desktop
-starts Code Mode from a project directory but the CLI/host handshake fails.
+Use this skill to diagnose the Windows Codex tool chain while preserving the
+workspace sandbox and active development sessions. The app-server is a shared
+control plane: one Desktop process can own several projects and task shells.
 
-## Recovery order
+## Non-negotiable safety rule
 
-1. **Inspect before changing anything.** Record OS, Codex CLI/Desktop versions,
-   current directory, `config.toml`/`config.yaml` presence, Git status, and the
-   exact error. Do not print API keys, tokens, cookies, or full private logs.
-2. **Check configuration.** Confirm a valid TOML file, one active
-   `model_provider`, the requested model, a readable local model catalog when
-   the provider's `/v1/models` response is incompatible, `wire_api = "responses"`,
-   `requires_openai_auth = true`, and `sandbox_mode = "workspace-write"`.
-   Keep `agents.enabled = true` (or the equivalent valid `[agents]` table).
-3. **Check the launch path.** If the error is CWD-dependent, use a small native
-   Windows shim as `CODEX_CLI_PATH`. The shim must forward all arguments,
-   launch the real `codex.exe`, set a stable user-profile working directory,
-   preserve the exit code, and keep `CODEX_REAL_CLI_PATH` explicit.
-4. **Back up before applying.** Copy `config.toml` with a timestamp. Make only
-   the smallest required edits. Never switch to `danger-full-access`, disable
-   the sandbox, guess an API key, or modify the registry as a first response.
-5. **Reload and verify.** Fully restart Codex Desktop so app-server reloads the
-   configuration. Then verify, in order: config parse, app-server initialize,
-   one terminal command, one file create/edit/read/delete in the target test
-   directory, and one real subagent call. A UI banner alone is not proof.
-6. **Classify residual warnings.** `TERM=dumb`, an optional MCP server missing
-   `CODEX_WINDOWS_REGISTERED_CORE`, or unavailable optional integrations are
-   separate from the core terminal/file/subagent result. Report them without
-   treating them as the root cause unless a verification actually fails.
+Never run Stop-Process against ChatGPT.exe, codex.exe, codex-cwd-shim.exe, or
+codex-code-mode-host.exe from an active Codex task. Never overwrite a fixed shim
+path while Desktop is running. Doing so can leave the UI showing "running"
+while the old task handle is gone, producing thread not found and interrupting
+unrelated projects.
 
-## Minimal command
+Stage a new versioned shim and let the user perform one normal Desktop restart
+when active projects are safe to pause.
 
-From this skill directory, run the script in diagnosis mode first:
+## Recovery
 
-```powershell
+1. **Collect evidence first.** Record OS, Desktop/CLI versions, project path,
+   exact error, process paths and parent relationships, config.toml or
+   config.yaml status, and the model/provider A/B result. Never print keys,
+   tokens, cookies, private logs, or full environment dumps.
+2. **Classify the failure.**
+   - code-mode host exited during handshake before the first command means
+     Code Mode initialization failed.
+   - GPT-5.5 works while GPT-5.6+ fails in the same project and account:
+     inspect the model-specific Code Mode/provider route.
+   - plugin_marketplace_folder_write_failed or
+     bundled_plugins_marketplace_resolve_failed plus Encrypted files under
+     WindowsApps indicates a plugin-cache copy failure.
+   - C: and E: Codex installations in the process chain indicate path mixing.
+   - thread not found after a repair attempt indicates an app-server reload or
+     stale UI handle; it is not proof that the rollout file was deleted.
+3. **Apply only reversible changes.** Back up config.toml. Keep
+   sandbox_mode = "workspace-write", the intended provider/model,
+   wire_api = "responses", and enabled agents. Build a versioned native shim
+   that:
+   - starts the real codex.exe from a stable user-profile CWD;
+   - forwards raw arguments and standard handles;
+   - sets CODEX_CLI_PATH and CODEX_REAL_CLI_PATH to the real CLI;
+   - removes other Codex installs from the child PATH;
+   - sets CODEX_CODE_MODE_HOST_PATH beside that CLI and TERM=xterm-256color.
+
+   Set only the user-level CODEX_CLI_PATH to the new versioned shim. Do not
+   stop current processes, replace the locked old shim, edit system variables,
+   or change the registry as a first response.
+4. **Handle the plugin cache only when logs prove it is involved.** Preserve
+   existing complete caches. If the WindowsApps source is encrypted and the
+   final cache is absent, copy file bytes into a new staging directory, verify
+   marketplace.json and
+   codex-app-tools\.codex-plugin\plugin.json, then promote it. Do not delete
+   old staging directories during an active session.
+5. **Reload safely.** After active work is safe, fully quit and reopen Desktop
+   normally. Do not use an in-task process kill as a substitute.
+6. **Verify the behavior.** Run one terminal command, create/read/update/delete
+   a harmless test file in the target directory, and make one real subagent
+   call. Report each result as PASS, PARTIAL, BLOCKED, or NOT_RUN.
+
+## Minimal use
+
+Diagnosis:
+
+~~~powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Repair-CodexWinFix.ps1
-```
+~~~
 
-Only apply changes after reviewing the diagnosis:
+Safe staging:
 
-```powershell
+~~~powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\Repair-CodexWinFix.ps1 -Apply -StageOnly -ProjectPath "$HOME\Downloads\demo"
+~~~
+
+When Desktop is fully closed, run the normal apply command to back up and
+update config.toml and the user-level environment:
+
+~~~powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\Repair-CodexWinFix.ps1 -Apply -ProjectPath "$HOME\Downloads\demo"
-```
+~~~
 
-The script is intentionally conservative. It creates a backup, updates only the
-root model/provider/catalog/sandbox/agent settings, refuses to overwrite an
-existing shim source unless `-Force` is explicit, and never stores secret values
-in output or repository files.
+The script does not restart Desktop, kill processes, overwrite the active
+shim, or store secret values. A UI banner or a successful config edit alone is
+not a repair result.
 
 ## Stop conditions
 
-Stop and report `BLOCKED` when the config cannot be parsed, the real CLI path is
-unknown, authentication is invalid, the remote provider is unavailable, or a
-verification step fails. Do not claim the tools are fixed from a successful
-config edit alone.
+Stop with BLOCKED when the config cannot be parsed, the real CLI is unknown,
+the provider/authentication is unavailable, the target path is unsafe, a
+versioned shim cannot be built, or any required verification fails. Keep the
+original process state and backups for review.
+
+## Reference
+
+The model-specific symptom and Windows CWD shim workaround are tracked in
+openai/codex#32759:
+https://github.com/openai/codex/issues/32759

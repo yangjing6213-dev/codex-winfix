@@ -1,8 +1,17 @@
 # codex-winfix
 
+> 用整理过的 Windows 排查路径定位 Codex 工具链问题，修复前备份，之后做真实回归检查。
+
+![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?style=flat-square&logo=powershell&logoColor=white) ![Markdown](https://img.shields.io/badge/Markdown-000000?style=flat-square&logo=markdown&logoColor=white) [![MIT](https://img.shields.io/badge/MIT-yellowgreen?style=flat-square)](LICENSE)
+
+
+![项目封面](assets/portfolio-promo-2026-11-02/cover-zh.jpg)
+
+英文封面与配图：[English cover](assets/portfolio-promo-2026-11-02/cover-en.jpg) · [English overview](assets/portfolio-promo-2026-11-02/overview-en.jpg)
+
 Windows Codex 工具链修复 Skill。它针对 Codex 提示“没有可用的终端、文件编辑或子智能体管理工具”，以及 code-mode host exited during handshake、CWD 转发、插件缓存复制和 app-server 重载异常。
 
-## 一、这个仓库是什么？
+## 一、这个项目是什么？
 
 这是一个轻量、可复用的 Codex Skill 和 PowerShell 修复脚本。它把 Windows 上已经验证过的排查路径整理成一条安全流程：
 
@@ -15,43 +24,12 @@ Windows Codex 工具链修复 Skill。它针对 Codex 提示“没有可用的�
 
 本次问题的关键经验是：Desktop 的 app-server 是多个项目共用的控制面。正在运行时停止 shim、CLI 或 Code Mode host，会让界面看起来仍在运行，但旧任务句柄已经失效，随后出现 thread not found，并可能中断其他开发项目。
 
-## 二、适合谁用？
+## 二、先看效果
+### 项目流程图（概念示意）
 
-### 1、特别适合
+![项目流程概念示意](assets/portfolio-promo-2026-11-02/overview-zh.jpg)
 
-- Windows 上使用 Codex Desktop 或 Codex CLI 的用户。
-- GPT-5.5 正常、GPT-5.6 或更高模型无法调用本地工具的用户。
-- 日志出现 code-mode host exited during handshake 的用户。
-- 从项目目录启动失败、切换到用户目录却正常的用户。
-- 进程链同时出现 C 盘和 E 盘 Codex 安装的用户。
-- 日志出现 plugin_marketplace_folder_write_failed 或 bundled_plugins_marketplace_resolve_failed，且 WindowsApps 插件文件带 Encrypted 属性的用户。
-- 希望保留 workspace-write 沙箱，并避免打断其他项目的用户。
-
-### 2、不适合
-
-- macOS 或 Linux 用户。
-- 账号登录失败、API 余额不足、第三方服务宕机等纯服务端问题。
-- 需要绕过权限、关闭沙箱、获取他人凭据或强制修改系统安全策略的场景。
-- 已经确认是 MCP 服务自身故障，而不是 Codex Code Mode 或 CLI 启动链路故障的场景。
-
-## 三、它会产出什么？
-
-- 不泄露秘密的本地诊断结果。
-- config.toml 时间戳备份。
-- 独立版本的 native Windows CWD forwarding shim。
-- 只作用于下次启动的用户级 CODEX_CLI_PATH 配置。
-- 必要时可生成未加密的本地 bundled marketplace 缓存。
-- 终端、文件编辑、子智能体的真实回归结果，以及 PASS、PARTIAL、BLOCKED 或 NOT_RUN 状态。
-
-## 四、具有什么价值？
-
-- 把“工具没了”定位到配置、模型路由、CWD、混用安装、插件缓存或 app-server 生命周期。
-- 先诊断和备份，再做可回滚的暂存修改。
-- 不用 danger-full-access 掩盖问题，不盲改注册表。
-- 不在活跃 Desktop 会话中杀进程或覆盖锁定文件。
-- 对主会话和子智能体做端到端验证，而不是只看按钮或 UI 提示。
-
-## 五、示例效果
+> AI 概念插画：展示项目思路，不代表真实软件界面、运行数据或实际结果。
 
 典型修复前：
 
@@ -72,7 +50,43 @@ subagent call: completed
 
 本次修复中，使用新 shim 和 GPT-5.6-sol 在用户的 Downloads\demo 目录真实执行终端命令成功；文件创建、读取、修改、删除成功；明确指定的 GPT-5.6 子智能体返回成功。每台机器仍必须重新验证，不能把示例当成预先承诺。
 
-## 六、安装方法
+## 三、适合谁用？
+
+### 1、特别适合
+
+- Windows 上使用 Codex Desktop 或 Codex CLI 的用户。
+- GPT-5.5 正常、GPT-5.6 或更高模型无法调用本地工具的用户。
+- 日志出现 code-mode host exited during handshake 的用户。
+- 从项目目录启动失败、切换到用户目录却正常的用户。
+- 进程链同时出现 C 盘和 E 盘 Codex 安装的用户。
+- 日志出现 plugin_marketplace_folder_write_failed 或 bundled_plugins_marketplace_resolve_failed，且 WindowsApps 插件文件带 Encrypted 属性的用户。
+- 希望保留 workspace-write 沙箱，并避免打断其他项目的用户。
+
+### 2、不适合
+
+- macOS 或 Linux 用户。
+- 账号登录失败、API 余额不足、第三方服务宕机等纯服务端问题。
+- 需要绕过权限、关闭沙箱、获取他人凭据或强制修改系统安全策略的场景。
+- 已经确认是 MCP 服务自身故障，而不是 Codex Code Mode 或 CLI 启动链路故障的场景。
+
+## 四、你会得到什么？
+
+- 不泄露秘密的本地诊断结果。
+- config.toml 时间戳备份。
+- 独立版本的 native Windows CWD forwarding shim。
+- 只作用于下次启动的用户级 CODEX_CLI_PATH 配置。
+- 必要时可生成未加密的本地 bundled marketplace 缓存。
+- 终端、文件编辑、子智能体的真实回归结果，以及 PASS、PARTIAL、BLOCKED 或 NOT_RUN 状态。
+
+## 五、它能帮你解决什么问题？
+
+- 把“工具没了”定位到配置、模型路由、CWD、混用安装、插件缓存或 app-server 生命周期。
+- 先诊断和备份，再做可回滚的暂存修改。
+- 不用 danger-full-access 掩盖问题，不盲改注册表。
+- 不在活跃 Desktop 会话中杀进程或覆盖锁定文件。
+- 对主会话和子智能体做端到端验证，而不是只看按钮或 UI 提示。
+
+## 六、安装与快速开始
 
 ~~~powershell
 git clone https://github.com/yangjing6213-dev/codex-winfix.git
@@ -87,7 +101,7 @@ Set-Location .\codex-winfix
 
 目录至少保留 SKILL.md 和 scripts\Repair-CodexWinFix.ps1。
 
-## 七、如何使用
+## 七、如何使用？
 
 先运行只读诊断：
 
@@ -147,7 +161,7 @@ codex-winfix/
     └── Repair-CodexWinFix.ps1
 ~~~
 
-## 十、注意实现
+## 十、注意事项与常见问题
 
 - 默认只读诊断；-Apply 才会备份配置、暂存版本化 shim 和设置用户级变量。
 - sandbox_mode 保持 workspace-write，不使用 danger-full-access。
@@ -206,7 +220,3 @@ https://github.com/openai/codex/issues/32759
 ## 十四、继续探索
 
 这个项目是我用 AI 搭建的个人生成系统里的一个工具。如果你也在用 AI 做内容、知识库、工作流或产品化，可以访问 [www.enhe-tech.com.cn](https://www.enhe-tech.com.cn/) 查看更多资料。
-
-## License
-
-[MIT](./LICENSE)
